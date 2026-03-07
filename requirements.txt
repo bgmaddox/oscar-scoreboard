@@ -1,0 +1,8 @@
+streamlit
+pandas
+plotly
+Pillow
+pytz
+streamlit-extras
+streamlit-autorefresh
+requests
