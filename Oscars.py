@@ -72,6 +72,7 @@ def load_static_data():
         pool_path = os.path.join(BASE_DIR, "Oscar Pool 2026 Responses.csv")
         df = pd.read_csv(pool_path)
         df = df.drop(['Timestamp','Venmo Username (so I can pay you if you win)'], axis = 1)
+        FunDF = df.set_index("Username").iloc[:, -2:]
         # Clean whitespace once
         df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
         return df
@@ -824,7 +825,7 @@ with tab5:
         st.markdown("## 🍿 Pool Stats & Trivia")
 
         col1, col2 = st.columns(2)
-        
+        FunDF = FunDF.reset_index()
         # ==========================================
         # GRAPH 1: FAVORITE MOVIE (Donut Chart)
         # ==========================================
@@ -832,6 +833,7 @@ with tab5:
             st.markdown("#### The Group's Favorite Movie")
             
             # Count the votes for each favorite movie
+            
             fav_counts = FunDF['Favorite Movie'].value_counts().reset_index()
             fav_counts.columns = ['Movie', 'Votes']
             
@@ -857,6 +859,7 @@ with tab5:
             st.markdown("#### Most Watched Movies")
             
             # 1. Drop empties and convert to string
+            
             seen_series = FunDF['Movies Seen'].dropna().astype(str)
             
             # 2. Split by comma and explode into individual rows
