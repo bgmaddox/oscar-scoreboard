@@ -829,26 +829,43 @@ with tab5:
         # ==========================================
         # GRAPH 1: FAVORITE MOVIE (Donut Chart)
         # ==========================================
+        # --- Ensure Username is a column, not just the index ---
+        df_temp = FunDF.copy()
+        if 'Username' not in df_temp.columns:
+            df_temp = df_temp.reset_index()
+            # If the index was unnamed, it might default to 'index', so we rename it
+            if 'index' in df_temp.columns and 'Username' not in df_temp.columns:
+                df_temp = df_temp.rename(columns={'index': 'Username'})
+        
+        # ==========================================
+        # GRAPH 1: FAVORITE MOVIE (Donut Chart)
+        # ==========================================
         with col1:
             st.markdown("#### The Group's Favorite Movie")
             
-            # Count the votes for each favorite movie
+            # 1. Group by movie, count the votes, and join the usernames with a line break
+            fav_agg = df_temp.groupby('Favorite Movie').agg(
+                Votes=('Username', 'count'),
+                Users=('Username', lambda x: '<br>'.join(x))
+            ).reset_index()
             
-            fav_counts = FunDF['Favorite Movie'].value_counts().reset_index()
-            fav_counts.columns = ['Movie', 'Votes']
-            
-            # Create Donut Chart
             fig_fav = px.pie(
-                fav_counts, 
+                fav_agg, 
                 values='Votes', 
-                names='Movie', 
-                hole=0.4, # This makes it a donut instead of a pie
+                names='Favorite Movie', 
+                hole=0.4,
+                custom_data=['Users'], # Sneak the text list into the plot data
                 color_discrete_sequence=px.colors.qualitative.Antique
             )
             
-            fig_fav.update_traces(textposition='inside', textinfo='percent+label')
-            fig_fav.update_layout(showlegend=False, margin=dict(t=30, b=0, l=0, r=0))
+            fig_fav.update_traces(
+                textposition='inside', 
+                textinfo='percent+label',
+                # Custom hover: Bold movie label, vote count, then the list of names
+                hovertemplate="<b>%{label}</b><br>Votes: %{value}<br><br><b>Picked by:</b><br>%{customdata[0]}<extra></extra>"
+            )
             
+            fig_fav.update_layout(showlegend=False, margin=dict(t=30, b=0, l=0, r=0))
             st.plotly_chart(fig_fav, use_container_width=True)
         
         
@@ -858,31 +875,35 @@ with tab5:
         with col2:
             st.markdown("#### Most Watched Movies")
             
-            # 1. Drop empties and convert to string
+            # 1. Keep only Username and Movies Seen, drop empty rows
+            seen_df = df_temp[['Username', 'Movies Seen']].dropna().copy()
             
-            seen_series = FunDF['Movies Seen'].dropna().astype(str)
+            # 2. Split the comma string into lists
+            seen_df['Movies Seen'] = seen_df['Movies Seen'].astype(str).str.split(',')
             
-            # 2. Split by comma and explode into individual rows
-            seen_exploded = seen_series.str.split(',').explode()
+            # 3. Explode the lists so each movie gets its own row WITH the Username still attached
+            seen_exploded = seen_df.explode('Movies Seen')
+            seen_exploded['Movies Seen'] = seen_exploded['Movies Seen'].str.strip()
             
-            # 3. Strip extra spaces (so " Barbie" and "Barbie" count as the same thing)
-            seen_exploded = seen_exploded.str.strip()
+            # 4. Group by the movie, count them, and join the usernames
+            seen_agg = seen_exploded.groupby('Movies Seen').agg(
+                Watch_Count=('Username', 'count'),
+                Users=('Username', lambda x: '<br>'.join(x))
+            ).reset_index()
             
-            # 4. Count them up and take the Top 10
-            seen_counts = seen_exploded.value_counts().head(10).reset_index()
-            seen_counts.columns = ['Movie', 'Watch Count']
+            # 5. Sort and take the Top 10
+            seen_top10 = seen_agg.sort_values('Watch_Count', ascending=False).head(10)
             
-            # Create Horizontal Bar Chart
             fig_seen = px.bar(
-                seen_counts, 
-                x='Watch Count', 
-                y='Movie', 
+                seen_top10, 
+                x='Watch_Count', 
+                y='Movies Seen', 
                 orientation='h',
-                color='Watch Count',
-                color_continuous_scale="Teal" # Or any color scale you like
+                custom_data=['Users'], # Sneak the text list in
+                color='Watch_Count',
+                color_continuous_scale="Teal"
             )
             
-            # Put the most watched at the top of the chart
             fig_seen.update_layout(
                 yaxis={'categoryorder':'total ascending'},
                 xaxis_title="Number of Contestants Who Saw It",
@@ -891,4 +912,12 @@ with tab5:
                 margin=dict(t=30, b=0, l=0, r=0)
             )
             
-            st.plotly_chart(fig_seen, use_container_width=True)
+            # --- NEW: Force the X-axis to count by 1s ---
+            fig_seen.update_xaxes(dtick=1) 
+            
+            fig_seen.update_traces(
+                # Custom hover: Bold movie label, then just the list of people
+                hovertemplate="<b>%{y}</b><br><br><b>Watched by:</b><br>%{customdata[0]}<extra></extra>"
+            )
+    
+    st.plotly_chart(fig_seen, use_container_width=True)
