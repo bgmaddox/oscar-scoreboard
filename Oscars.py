@@ -920,4 +920,4 @@ with tab5:
                 hovertemplate="<b>%{y}</b><br><br><b>Watched by:</b><br>%{customdata[0]}<extra></extra>"
             )
     
-    st.plotly_chart(fig_seen, use_container_width=True)
+            st.plotly_chart(fig_seen, use_container_width=True)
