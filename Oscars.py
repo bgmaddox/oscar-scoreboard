@@ -824,6 +824,7 @@ with tab5:
         st.markdown("## 🍿 Pool Stats & Trivia")
 
         col1, col2 = st.columns(2)
+        
         FunDF = df.set_index("Username").iloc[:, -2:]
         # ==========================================
         # GRAPH 1: FAVORITE MOVIE (Donut Chart)
