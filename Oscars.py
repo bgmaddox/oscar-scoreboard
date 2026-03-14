@@ -671,7 +671,8 @@ with tab3:
         st.plotly_chart(fig_diff, use_container_width=True)
     st.divider()  
     st.markdown("### Everyone's Picks")
-    st.dataframe(styled_df, height=1100, use_container_width=True)
+    #st.dataframe(styled_df, height=1100, use_container_width=True)
+    st.dataframe(PicksTurned, height=1100, use_container_width=True)
 
     
 
