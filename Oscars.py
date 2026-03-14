@@ -58,7 +58,7 @@ def load_static_data():
         data = StringIO(response.text)
         df = pd.read_csv(data)
         df = df.drop(['Timestamp','Venmo Username (so I can pay you if you win)'], axis = 1)
-        FunDF = df.set_index("Username").iloc[:, -2:]
+        
         # Clean up data
         df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
         
@@ -72,7 +72,6 @@ def load_static_data():
         pool_path = os.path.join(BASE_DIR, "Oscar Pool 2026 Responses.csv")
         df = pd.read_csv(pool_path)
         df = df.drop(['Timestamp','Venmo Username (so I can pay you if you win)'], axis = 1)
-        FunDF = df.set_index("Username").iloc[:, -2:]
         # Clean whitespace once
         df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
         return df
@@ -825,7 +824,7 @@ with tab5:
         st.markdown("## 🍿 Pool Stats & Trivia")
 
         col1, col2 = st.columns(2)
-        FunDF = FunDF.reset_index()
+        FunDF = df.set_index("Username").iloc[:, -2:]
         # ==========================================
         # GRAPH 1: FAVORITE MOVIE (Donut Chart)
         # ==========================================
