@@ -38,21 +38,43 @@ SCORES_MAP = {
     "Best Production Design (5 pts)":5, "Best Visual Effects (5 pts)":5,
     "Best Live Action Short Film (5 pts)":5, "Best Costume Design (5 pts)":5,
     "Best Sound (5 pts)":5, "Which film will win the most Oscars? (10 pts)":10,
-    
+    "Best Casting (10 pts":10,
     "Best Picture (20 pts)":20
 }
 
 # --- 3. Optimized Data Loading ---
+Winner_SHEET_URL = "https://docs.google.com/spreadsheets/d/1ivt0monzA-ymjJcCEPKyLbc8_9vvLSDhCDsocg6YW8E/export?format=csv"
 
 # Cache the picks FOREVER (since they don't change tonight)
 @st.cache_data
 def load_static_data():
-    pool_path = os.path.join(BASE_DIR, "Oscar Pool 2025.csv")
-    df = pd.read_csv(pool_path)
-    df = df.drop(['Timestamp','Venmo Username (so I can pay you if you win)'], axis = 1)
-    # Clean whitespace once
-    df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
-    return df
+    
+    try:
+        # Option 1: Try to get data from the web using 'requests' (More robust)
+        response = requests.get(Winner_SHEET_URL)
+        response.raise_for_status() # Check if the download actually worked
+        
+        # Convert the text string into a format pandas can read
+        data = StringIO(response.text)
+        df = pd.read_csv(data)
+        df = df.drop(['Timestamp','Venmo Username (so I can pay you if you win)'], axis = 1)
+        FunDF = df.set_index("Username").iloc[:, -2:]
+        # Clean up data
+        df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
+        
+        return df
+
+    except Exception as e:
+        # Option 2: If the internet fails, silently fall back to the local CSV
+        print(f"⚠️ Network error: {e}")
+        print("⚠️ Switching to local backup file.")
+        
+        pool_path = os.path.join(BASE_DIR, "Oscar Pool 2026 Responses.csv")
+        df = pd.read_csv(pool_path)
+        df = df.drop(['Timestamp','Venmo Username (so I can pay you if you win)'], axis = 1)
+        # Clean whitespace once
+        df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
+        return df
 
 # Cache the winners for 30 SECONDS (checks for updates frequently)
 LIVE_SHEET_URL = "https://docs.google.com/spreadsheets/d/18a5kfac7R7kkV3yk4Kk0Ff3zk2sqrL1nuHKfYza4-CA/export?format=csv"
@@ -80,7 +102,7 @@ def load_live_data():
         print(f"⚠️ Network error: {e}")
         print("⚠️ Switching to local backup file.")
         
-        backup_path = os.path.join(BASE_DIR, "2025 Oscar Winners.csv")
+        backup_path = os.path.join(BASE_DIR, "2026 Oscar Winners.csv")
         winners = pd.read_csv(backup_path)
         winners = winners.map(lambda x: x.strip() if isinstance(x, str) else x)
         winners['Points'] = winners['Category'].map(get_points_from_category)
@@ -324,7 +346,7 @@ Scoreboard = calculate_scoreboard(df, Winners)
 
 Scoreboard_Lite = Scoreboard[['Contestant', 'Total Score', 'Rank']]
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Scoreboard", "Live Winners", "Picks", "Head-to-Head", "Path to Victory", "Rooting Guide"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Scoreboard", "Live Winners", "Picks", "Head-to-Head", "Path to Victory", "Rooting Guide", "Pool Stats & Trivia"])
 
 # --- TAB 1: SCOREBOARD ---
 with tab1:
@@ -797,3 +819,72 @@ with tab5:
         else:
             st.balloons()
             st.success("All categories have been announced! The pool is closed!")
+    with tab7:
+        st.markdown("## 🍿 Pool Stats & Trivia")
+
+        col1, col2 = st.columns(2)
+        
+        # ==========================================
+        # GRAPH 1: FAVORITE MOVIE (Donut Chart)
+        # ==========================================
+        with col1:
+            st.markdown("#### The Group's Favorite Movie")
+            
+            # Count the votes for each favorite movie
+            fav_counts = FunDF['Favorite Movie'].value_counts().reset_index()
+            fav_counts.columns = ['Movie', 'Votes']
+            
+            # Create Donut Chart
+            fig_fav = px.pie(
+                fav_counts, 
+                values='Votes', 
+                names='Movie', 
+                hole=0.4, # This makes it a donut instead of a pie
+                color_discrete_sequence=px.colors.qualitative.Antique
+            )
+            
+            fig_fav.update_traces(textposition='inside', textinfo='percent+label')
+            fig_fav.update_layout(showlegend=False, margin=dict(t=30, b=0, l=0, r=0))
+            
+            st.plotly_chart(fig_fav, use_container_width=True)
+        
+        
+        # ==========================================
+        # GRAPH 2: MOST WATCHED MOVIES (Bar Chart)
+        # ==========================================
+        with col2:
+            st.markdown("#### Most Watched Movies")
+            
+            # 1. Drop empties and convert to string
+            seen_series = FunDF['Movies Seen'].dropna().astype(str)
+            
+            # 2. Split by comma and explode into individual rows
+            seen_exploded = seen_series.str.split(',').explode()
+            
+            # 3. Strip extra spaces (so " Barbie" and "Barbie" count as the same thing)
+            seen_exploded = seen_exploded.str.strip()
+            
+            # 4. Count them up and take the Top 10
+            seen_counts = seen_exploded.value_counts().head(10).reset_index()
+            seen_counts.columns = ['Movie', 'Watch Count']
+            
+            # Create Horizontal Bar Chart
+            fig_seen = px.bar(
+                seen_counts, 
+                x='Watch Count', 
+                y='Movie', 
+                orientation='h',
+                color='Watch Count',
+                color_continuous_scale="Teal" # Or any color scale you like
+            )
+            
+            # Put the most watched at the top of the chart
+            fig_seen.update_layout(
+                yaxis={'categoryorder':'total ascending'},
+                xaxis_title="Number of Contestants Who Saw It",
+                yaxis_title=None,
+                coloraxis_showscale=False,
+                margin=dict(t=30, b=0, l=0, r=0)
+            )
+            
+            st.plotly_chart(fig_seen, use_container_width=True)
