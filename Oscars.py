@@ -95,6 +95,10 @@ def load_live_data():
         # Clean up data
         winners = winners.map(lambda x: x.strip() if isinstance(x, str) else x)
         winners['Points'] = winners['Category'].map(get_points_from_category)
+        # --- THE GHOST KILLER ---
+        # Forces the app to ignore the Tiebreaker row or any extra notes in your Google Sheet
+        winners = winners[winners['Category'].isin(SCORES_MAP.keys())]
+        
         return winners
 
     except Exception as e:
@@ -106,6 +110,9 @@ def load_live_data():
         winners = pd.read_csv(backup_path)
         winners = winners.map(lambda x: x.strip() if isinstance(x, str) else x)
         winners['Points'] = winners['Category'].map(get_points_from_category)
+        # --- THE GHOST KILLER ---
+        # Forces the app to ignore the Tiebreaker row or any extra notes in your Google Sheet
+        winners = winners[winners['Category'].isin(SCORES_MAP.keys())]
         return winners
     
 
@@ -277,7 +284,6 @@ def calculate_scoreboard(df_picks, df_winners):
 
     
     
-    return scoreboard
 
 def style_row_by_groups(row):
     COLOR_PALETTE = ["#ffadad", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff", "#a0c4ff", "#bdb2ff", "#ffc6ff"]
@@ -634,6 +640,11 @@ with tab3:
     else:
         st.success("All categories announced!")
     PicksTurned = df.set_index('Username').T
+    # --- PREVENT DUPLICATE NAME CRASH ---
+    if PicksTurned.columns.duplicated().any():
+        cols = pd.Series(PicksTurned.columns)
+        PicksTurned.columns = cols + cols.groupby(cols).cumcount().astype(str).replace('0', '')
+    # ------------------------------------
     styled_df = PicksTurned.style.apply(style_row_by_groups, axis=1).set_properties(
         **{'inline-size': '10px', 'overflow-wrap': 'break-word'}
     )
