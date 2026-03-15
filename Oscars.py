@@ -767,7 +767,10 @@ with tab5:
                     else:
                         # Fallback if the category or user isn't in this dataframe
                         my_pick = "N/A"
-                    target_pick = str(path_df_base.loc[target_name, category]).strip()
+                    if category in path_df_base.columns and target_name in path_df_base.index:
+                        target_pick = str(path_df_base.loc[target_name, category]).strip()
+                    else:
+                        target_pick = "N/A"
                     
                     if my_pick != target_pick:
                         max_gain += points
