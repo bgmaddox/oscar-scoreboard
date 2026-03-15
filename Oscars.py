@@ -38,7 +38,7 @@ SCORES_MAP = {
     "Best Production Design (5 pts)":5, "Best Visual Effects (5 pts)":5,
     "Best Live Action Short Film (5 pts)":5, "Best Costume Design (5 pts)":5,
     "Best Sound (5 pts)":5, "Which film will win the most Oscars? (10 pts)":10,
-    "Best Casting (10 pts":10,
+    "Best Casting (10 pts)":10,
     "Best Picture (20 pts)":20
 }
 
