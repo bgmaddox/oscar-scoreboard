@@ -762,7 +762,11 @@ with tab5:
                 is_decided = pd.notna(winner) and winner != ""
                 
                 if not is_decided:
-                    my_pick = str(path_df_base.loc[hero_user, category]).strip()
+                    if category in path_df_base.columns and hero_user in path_df_base.index:
+                        my_pick = str(path_df_base.loc[hero_user, category]).strip()
+                    else:
+                        # Fallback if the category or user isn't in this dataframe
+                        my_pick = "N/A"
                     target_pick = str(path_df_base.loc[target_name, category]).strip()
                     
                     if my_pick != target_pick:
