@@ -50,7 +50,7 @@ Winner_SHEET_URL = "https://docs.google.com/spreadsheets/d/1ivt0monzA-ymjJcCEPKy
 def load_static_data():
     
     try:
-        # Option 1: Try to get data from the web using 'requests' (More robust)
+        # Option 1: Try to get data from the web using 'requests' (More )
         response = requests.get(Winner_SHEET_URL)
         response.raise_for_status() # Check if the download actually worked
         
@@ -84,7 +84,7 @@ LIVE_SHEET_URL = "https://docs.google.com/spreadsheets/d/18a5kfac7R7kkV3yk4Kk0Ff
 @st.cache_data(ttl=60)
 def load_live_data():
     try:
-        # Option 1: Try to get data from the web using 'requests' (More robust)
+        # Option 1: Try to get data from the web using 'requests' (More )
         response = requests.get(LIVE_SHEET_URL)
         response.raise_for_status() # Check if the download actually worked
         
@@ -176,27 +176,21 @@ def render_category_card(row, df_picks):
 
                 # --- NEW SIMPLIFIED TROPHY LOGIC ---
                 if winner and pd.notna(winner) and str(winner).strip() != "":
-                    clean_winner = str(winner).strip().lower()
+                    # Create a list of winning movies (handles 1 winner or comma-separated ties)
+                    winning_movies = [w.strip().lower() for w in str(winner).split(',')]
                     
-                    # 1. Just find the matching row name
-                    # We look at the unique values in the chart's 'Nominee' column
-                    matched_nominee = None
+                    # Loop through all nominees and drop a trophy on any that match
                     for nominee in chart_data['Nominee'].unique():
-                        if str(nominee).strip().lower() == clean_winner:
-                            matched_nominee = nominee
-                            break
-                    
-                    # 2. Place trophy at x=0 (the Y-axis line)
-                    if matched_nominee:
-                        fig.add_annotation(
-                            x=0,                     # Start exactly at the Y-axis
-                            y=matched_nominee,       # The winning row
-                            text="🍿",
-                            showarrow=False,
-                            xanchor="left",          # Anchor the left side of the emoji to x=0
-                            xshift=10,               # Nudge it 10px into the bar so it's not on the line
-                            font=dict(size=30) 
-                        )
+                        if str(nominee).strip().lower() in winning_movies:
+                            fig.add_annotation(
+                                x=0,                     
+                                y=nominee,               
+                                text="🍿",
+                                showarrow=False,
+                                xanchor="left",          
+                                xshift=10,               
+                                font=dict(size=30) 
+                            )
 
                 fig.update_layout(
                     height=250, margin=dict(l=0, r=0, t=0, b=0),
@@ -239,7 +233,14 @@ def calculate_scoreboard(df_picks, df_winners):
             points = SCORES_MAP[category]
             
             # Robust comparison
-            is_correct = df_picks[category].astype(str).str.strip().str.lower() == str(correct_answer).strip().lower()
+            # --- TIE FIX: Support comma-separated winners ---
+            # Split the correct answer(s) into a list of cleaned strings
+            valid_answers = [ans.strip().lower() for ans in str(correct_answer).split(',')]
+            
+            # Check if the user's pick is inside that list of valid answers
+            user_picks_clean = df_picks[category].astype(str).str.strip().str.lower()
+            is_correct = user_picks_clean.isin(valid_answers)
+            
             scoreboard[category] = is_correct.astype(int) * points
         elif category not in ["Username", "Contestant", tiebreak_col]: 
             scoreboard[category] = 0
